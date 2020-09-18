@@ -1,0 +1,35 @@
+name: Build and Deploy
+on: workflow_dispatch
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    name: create dummy artifacts
+    steps:
+      - name: create two dummy files
+        run: |
+          echo test > test1.txt
+          echo test2 > test2.txt
+      - name: upload dummy artifact 1
+        uses: actions/upload-artifact@v1
+        with:
+          name: test1
+          path: ./test1.txt
+      - name: upload dummy artifact 2
+        uses: actions/upload-artifact@v1
+        with:
+          name: test2
+          path: ./test2.txt      
+  cleanup:
+    needs: build-and-deploy
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Cleanup Workflow
+        run: |
+          echo ::add-mask::${{ secrets.ACCESS_TOKEN }}
+          curl --verbose --fail --show-error --location --request \
+            POST "https://api.github.com/repos/${{ github.repository }}/dispatches" \
+            --header "Authorization: token ${{ secrets.ACCESS_TOKEN }}" \
+            --header 'Content-Type: application/json' \
+            --header 'Accept: application/vnd.github.everest-preview+json' \
+            --data-raw "{\"event_type\": \"delete_all_artifacts\", \"client_payload\": {\"parent_runid\": \"${{ github.run_id }}\", \"parent_repo\": \"${{ github.repository }}\"}}"
